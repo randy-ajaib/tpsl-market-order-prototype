@@ -2,6 +2,8 @@
 
 Throwaway prototype for the US stock trade page: how TP/SL validation behaves on a market order while the price moves, without the Beli button blinking.
 
+**Live:** https://randy-ajaib.github.io/tpsl-market-order-prototype/
+
 Open `index.html` through any static server (`python3 -m http.server`) and switch versions with the pill at the top or keys 1–4 / ←/→:
 
 1. **Check on tap**: TP/SL is checked only on edit or on Beli.
