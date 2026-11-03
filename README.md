@@ -11,6 +11,6 @@ Open `index.html` through any static server (`python3 -m http.server`). The gear
 3. **Anchored %**: TP/SL set as % from the fill price, so price moves can't invalidate it.
 4. **Auto-adjust**: like 1, plus a one-tap "Ubah ke $X & beli".
 
-The controls move the price and sets the buffer x%, tick speed and size, and the hold time.
+The controls move the price and set the buffer x%, tick speed and size, and the hold time.
 
 Built from PD design tokens and Lato (SIL OFL 1.1, see `fonts/OFL.txt`). Layout follows the USS Trade Page Figma.
