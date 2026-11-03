@@ -4,7 +4,7 @@ Throwaway prototype for the US stock trade page: how TP/SL validation behaves on
 
 **Live:** https://randy-ajaib.github.io/tpsl-market-order-prototype/
 
-Open `index.html` through any static server (`python3 -m http.server`). The gear (top right) opens the version tabs and the controls; keys 1–4 / ←/→ switch versions even while it’s closed:
+Open `index.html` through any static server (`python3 -m http.server`). The gear (top right) opens the options panel (same frame and panel as the SIP prototype); keys 1–4 / ←/→ switch versions even while it’s closed:
 
 1. **Check on tap**: TP/SL is checked only on edit or on Beli.
 2. **Live, steadied**: checked continuously, but a state must hold before it shows.
