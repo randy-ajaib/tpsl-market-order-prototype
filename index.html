@@ -1,0 +1,584 @@
+<!doctype html>
+<!-- Throwaway prototype (emil-prototype). TP/SL validation on a moving market price.
+     Delete this folder and the "tpsl-proto" entry in .claude/launch.json once a direction is picked. -->
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TP/SL validation prototype</title>
+<style>
+  @font-face { font-family: Lato; font-weight: 400; src: url("fonts/Lato-Regular.ttf"); font-display: swap; }
+  @font-face { font-family: Lato; font-weight: 600; src: url("fonts/Lato-SemiBold.ttf"); font-display: swap; }
+  @font-face { font-family: Lato; font-weight: 700; src: url("fonts/Lato-Bold.ttf"); font-display: swap; }
+
+  /* PD tokens (pd-design-artifacts/tokens/ui-color.json), light + dark */
+  :root {
+    --page: #f5f5f5; --surface: #ffffff;
+    --text-1: #000000; --text-2: rgba(0,0,0,.65); --text-3: rgba(0,0,0,.48);
+    --text-primary: #2264d4; --text-positive: #0c8a5c; --text-negative: #c93030; --text-warning: #a86f03;
+    --primary: #3278f0; --on-primary: #ffffff; --positive: #1cb87e; --negative: #e84444;
+    --negative-4: rgba(232,68,68,.08); --warning-4: rgba(255,198,68,.2); --primary-4: rgba(50,120,240,.1);
+    --neutral-2: rgba(0,0,0,.16); --neutral-3: rgba(0,0,0,.1); --neutral-4: rgba(0,0,0,.04);
+    --backdrop: rgba(0,0,0,.5); --toast: #1c1c1c; --on-toast: #f6f6f6;
+    --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --font: Lato, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #1c1c1c; --surface: #111111;
+      --text-1: #f6f6f6; --text-2: rgba(255,255,255,.88); --text-3: rgba(255,255,255,.6);
+      --text-primary: #7aabff; --text-positive: #1dd58d; --text-negative: #ff7a85; --text-warning: #f4c251;
+      --negative-4: rgba(232,68,68,.17); --warning-4: rgba(232,184,77,.15); --primary-4: rgba(50,120,240,.2);
+      --neutral-2: rgba(255,255,255,.26); --neutral-3: rgba(255,255,255,.14); --neutral-4: rgba(255,255,255,.08);
+      --backdrop: rgba(0,0,0,.7); --toast: #f6f6f6; --on-toast: #111111;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--text-1); font-family: var(--font); -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; justify-content: center; padding: 72px 16px 24px; }
+  button, input { font-family: inherit; touch-action: manipulation; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--text-1); outline-offset: 2px; }
+  .ico { width: 24px; height: 24px; flex: none; fill: currentColor; display: block; }
+  .i20 { width: 20px; height: 20px; } .i16 { width: 16px; height: 16px; } .i14 { width: 14px; height: 14px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Phone */
+  .phone { width: 390px; height: 844px; background: var(--surface); border-radius: 32px; overflow: hidden; box-shadow: 0 0 0 1px var(--neutral-3); position: relative; display: flex; flex-direction: column; isolation: isolate; }
+  .statusbar { height: 24px; flex: none; }
+  .ptabs { display: flex; gap: 16px; padding: 0 16px; height: 40px; box-shadow: inset 0 -1px 0 var(--neutral-3); flex: none; }
+  .ptabs span { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--text-2); }
+  .ptabs .on { color: var(--primary); box-shadow: inset 0 -2px 0 var(--primary); }
+  .head { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 6px; flex: none; }
+  .head-row { display: flex; align-items: center; gap: 8px; }
+  .logo { width: 28px; height: 28px; border-radius: 999px; background: var(--neutral-4); display: grid; place-items: center; font-size: 15px; font-weight: 700; color: var(--primary); flex: none; }
+  .ticker { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 2px; }
+  .head-acts { margin-left: auto; display: flex; gap: 16px; }
+  .price-row { display: flex; align-items: baseline; gap: 4px; }
+  .tag24 { font-size: 9px; font-weight: 700; padding: 1px 3px; border-radius: 3px; background: var(--text-1); color: var(--surface); align-self: center; }
+  .price { font-size: 15px; font-weight: 700; }
+  .chg { font-size: 11px; color: var(--text-positive); }
+  .chg[data-down] { color: var(--text-negative); }
+  .lastclose { margin-left: auto; font-size: 11px; color: var(--text-2); }
+  .ratio { display: flex; gap: 2px; height: 4px; margin-top: 4px; }
+  .ratio i { border-radius: 2px; } .ratio i:first-child { flex: 23; background: var(--positive); } .ratio i:last-child { flex: 77; background: var(--negative); }
+  .bidask { display: flex; justify-content: space-between; font-size: 11px; }
+  .bidask > span:first-child { color: var(--text-positive); } .bidask > span:last-child { color: var(--text-negative); }
+
+  .body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 6px; background: var(--neutral-4); }
+  .seg span { height: 28px; display: grid; place-items: center; border-radius: 4px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+  .seg .on { background: var(--primary); color: var(--on-primary); }
+  .frow { display: grid; grid-template-columns: 1fr 214px; align-items: center; gap: 8px; font-size: 13px; }
+  .flabel { display: flex; flex-direction: column; gap: 2px; } .flabel small { font-size: 11px; color: var(--text-primary); }
+  .ctl { height: 32px; border: 1px solid var(--neutral-2); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 13px; background: var(--surface); color: var(--text-1); }
+  .ctl-center b { flex: 1; text-align: center; font-weight: 400; }
+  .slider { display: flex; justify-content: flex-end; }
+  .slider i { display: block; width: 214px; height: 4px; border-radius: 2px; background: var(--primary-4); position: relative; }
+  .slider i::before { content: ""; position: absolute; inset: 0 70% 0 0; border-radius: 2px; background: var(--primary); }
+  .slider i::after { content: ""; position: absolute; left: calc(30% - 9px); top: -7px; width: 18px; height: 18px; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--neutral-2); }
+
+  .tpsl { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; box-shadow: inset 0 -1px 0 var(--neutral-3); }
+  .tpsl-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .dotted { border-bottom: 1px dashed var(--text-3); }
+  .link { position: relative; background: none; border: 0; padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px; }
+  .link::before { content: ""; position: absolute; inset: -12px -8px; }
+  .vals { display: flex; flex-direction: column; gap: 6px; font-size: 10px; line-height: 16px; color: var(--text-3); }
+  .sum { display: flex; justify-content: space-between; gap: 8px; }
+  .sum b { color: var(--text-2); font-weight: 700; margin-right: 4px; }
+  .sum[data-err] .sum-v { color: var(--text-negative); font-weight: 700; }
+  .msg:empty { display: none; }
+  .msg-err { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.4; color: var(--text-negative); }
+  .msg-err .link { font-size: 12px; margin-left: 2px; }
+  .fix { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 8px; background: var(--negative-4); color: var(--text-negative); font-size: 12px; line-height: 1.4; }
+  .fix-head { display: flex; gap: 6px; align-items: flex-start; }
+  .fix-head b { display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .fix-acts { display: flex; gap: 12px; align-items: center; }
+  .btn-s { height: 32px; padding: 0 12px; border: 0; border-radius: 4px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 600; transition: transform 120ms ease-out; }
+  .btn-s:active { transform: scale(0.96); }
+  @media (prefers-reduced-motion: no-preference) {
+    .msg > * { animation: msg-in 200ms var(--ease-out); }
+  }
+  @keyframes msg-in { from { opacity: 0; transform: translateY(-4px); } }
+
+  .foot { flex: none; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .kv { display: flex; justify-content: space-between; font-size: 13px; }
+  .kv b { font-weight: 700; }
+  .btn { height: 48px; border: 0; border-radius: 4px; background: var(--primary); color: var(--on-primary); font-size: 17px; font-weight: 600; margin-top: 6px; transition: transform 120ms ease-out; }
+  .btn:active { transform: scale(0.96); }
+  .bnav { height: 64px; flex: none; display: flex; justify-content: space-around; align-items: center; box-shadow: inset 0 1px 0 var(--neutral-3); font-size: 11px; color: var(--text-2); padding-bottom: env(safe-area-inset-bottom); }
+  .bnav .on { color: var(--primary); }
+
+  .toast { position: absolute; left: 16px; right: 16px; bottom: 156px; padding: 12px 14px; border-radius: 8px; background: var(--toast); color: var(--on-toast); font-size: 13px; z-index: 3; visibility: hidden; opacity: 0; transform: translateY(6px); transition: opacity 180ms ease-in, transform 180ms ease-in, visibility 0s 180ms; }
+  .toast[data-show] { visibility: visible; opacity: 1; transform: none; transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out); }
+
+  /* Bottom sheet (USS Trade Page, limit-order TP/SL) */
+  .backdrop { position: absolute; inset: 0; background: var(--backdrop); z-index: 4; opacity: 0; visibility: hidden; transition: opacity 160ms ease-in, visibility 0s 160ms; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; transform: translateY(100%); visibility: hidden; transition: transform 160ms ease-in, visibility 0s 160ms; }
+  .phone[data-sheet] .backdrop { opacity: 1; visibility: visible; transition: opacity 240ms var(--ease-out); }
+  .phone[data-sheet] .sheet { transform: none; visibility: visible; transition: transform 280ms var(--ease-out); }
+  @media (prefers-reduced-motion: reduce) { .backdrop, .sheet, .phone[data-sheet] .backdrop, .phone[data-sheet] .sheet, .toast, .toast[data-show] { transition: none; } }
+  .grabber { height: 20px; display: grid; place-items: center; } .grabber i { width: 80px; height: 4px; border-radius: 2px; background: var(--neutral-2); }
+  .sheet-title { display: flex; align-items: center; gap: 12px; padding: 4px 16px 12px; }
+  .sheet-title h2 { margin: 0; font-size: 18px; font-weight: 700; }
+  .icon-btn { position: relative; border: 0; background: none; padding: 0; color: var(--text-1); display: grid; }
+  .icon-btn::before { content: ""; position: absolute; inset: -10px; }
+  .sheet-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 12px; }
+  .calc { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-2); }
+  .mini-seg { display: flex; padding: 2px; border-radius: 6px; background: var(--neutral-4); }
+  .mini-seg button { position: relative; border: 0; background: none; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }
+  .mini-seg button[aria-pressed="true"] { background: var(--surface); color: var(--text-primary); box-shadow: 0 0 0 1px var(--neutral-3); }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 4px 0; align-self: flex-start; }
+  .chk input { appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 3px; border: 1.5px solid var(--neutral-2); display: grid; place-items: center; cursor: pointer; }
+  .chk input:checked { background: var(--primary); border-color: var(--primary); }
+  .chk input:checked::after { content: ""; width: 9px; height: 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg) translate(1px, -1px); }
+  .leg { display: flex; flex-direction: column; gap: 6px; }
+  .leg-ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stepper { padding: 0 2px; gap: 0; }
+  .stepper button { position: relative; border: 0; background: none; width: 28px; height: 28px; color: var(--text-1); display: grid; place-items: center; border-radius: 4px; }
+  .stepper button::before { content: ""; position: absolute; inset: -6px -4px; }
+  .stepper button:active { transform: scale(0.96); }
+  .stepper input { flex: 1; min-width: 0; border: 0; background: none; text-align: center; font-size: 14px; color: var(--text-1); padding: 0; font-variant-numeric: tabular-nums; }
+  .stepper input:focus-visible { outline: none; }
+  .stepper:focus-within { border-color: var(--primary); }
+  .leg[data-err] .stepper { border-color: var(--negative); }
+  .leg[data-off] .leg-ctl, .leg[data-off] .hint { opacity: .4; pointer-events: none; }
+  .hint { display: flex; gap: 4px; align-items: flex-start; font-size: 11px; line-height: 1.4; color: var(--text-3); min-height: 15px; }
+  .hint .ico { display: none; }
+  .leg[data-err] .hint { color: var(--text-negative); }
+  .leg[data-err] .hint .ico { display: block; }
+  .note { display: flex; gap: 6px; font-size: 11px; line-height: 1.45; color: var(--text-2); }
+  .sheet-dock { padding: 4px 16px 16px; }
+  .sheet-dock .btn { width: 100%; margin: 0; font-size: 16px; }
+
+  /* Harness chrome: picker (PICKER.md, verbatim) */
+  .proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+  .proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+  .proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+  @media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+  .proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+  .proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+  .proto-picker-item:active { transform: scale(0.97); }
+  .proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+  .proto-picker-item[data-active] { color: #fff; }
+  .proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+  .proto-picker-replay { padding: 0 10px; font-size: 14px; }
+  .proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+
+  /* Harness chrome: control panel (CONTROLS.md) */
+  .proto-panel { position: fixed; top: 24px; right: 24px; z-index: 2147483646; width: 248px; padding: 12px; border-radius: 12px; background: rgba(10,10,10,.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 8px 24px rgba(0,0,0,.24); }
+  .proto-panel label { display: flex; flex-direction: column; gap: 4px; color: rgba(255,255,255,.7); }
+  .proto-panel label span { display: flex; justify-content: space-between; }
+  .proto-panel output { color: #fff; font-variant-numeric: tabular-nums; }
+  .proto-panel input[type=range] { width: 100%; accent-color: #fff; }
+  .proto-panel .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .proto-panel button { border: 0; border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.12); color: #fff; font: inherit; }
+  .proto-panel button:active { transform: scale(0.97); }
+  .proto-panel .live { display: flex; justify-content: space-between; color: rgba(255,255,255,.7); }
+  @media (max-width: 960px) { .proto-panel { top: auto; bottom: 72px; right: 12px; width: 220px; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M17.293 8.293a1 1 0 1 1 1.414 1.414l-6 6a1 1 0 0 1-1.414 0l-6-6a1 1 0 0 1 1.414-1.414L12 13.586l5.293-5.293Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M17.293 5.293a1 1 0 1 1 1.414 1.414L13.414 12l5.293 5.293a1 1 0 0 1-1.414 1.414L12 13.414l-5.293 5.293a1 1 0 0 1-1.414-1.414L10.586 12 5.293 6.707a1 1 0 0 1 1.414-1.414L12 10.586l5.293-5.293Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 19v-6H5a1 1 0 1 1 0-2h6V5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0Z"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M21 4.82a1.82 1.82 0 0 0-3.1-1.29L16.42 5l2.57 2.58 1.48-1.48.12-.13c.27-.33.41-.73.41-1.15ZM4.55 16.88a1 1 0 0 0-.25.42l-1.05 3.45 3.46-1.05.11-.04a1 1 0 0 0 .3-.21L17.58 9 15 6.42 4.55 16.88ZM23 4.82c0 .95-.35 1.86-.99 2.56l-.13.14-2.09 2.09-.09.1-.1.09L8.53 20.87c-.35.35-.77.6-1.24.75l-4.36 1.32a1.5 1.5 0 0 1-1.87-1.87l1.32-4.35c.14-.47.4-.9.75-1.25L14.21 4.39l.08-.1.1-.08 2.09-2.09a3.82 3.82 0 0 1 6.52 2.7Z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M19 11a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2h14Z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M6.5 3A1.5 1.5 0 0 0 5 4.5v11.838A3.5 3.5 0 0 1 6.5 16H19V3H6.5ZM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3H6.5A1.5 1.5 0 0 0 5 19.5ZM21 21a2 2 0 0 1-2 2H6.5A3.5 3.5 0 0 1 3 19.5v-15A3.5 3.5 0 0 1 6.5 1H19a2 2 0 0 1 2 2v18Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M11.99 1.99c.53 0 1.05.14 1.51.4.46.27.84.65 1.1 1.11l8 14 .09.17c.2.41.31.87.31 1.33a3 3 0 0 1-3 3H4a3 3 0 0 1-2.61-4.5l8-14c.26-.46.64-.84 1.1-1.11.46-.26.98-.4 1.5-.4Zm0 2a1 1 0 0 0-.87.5l-8 14A1 1 0 0 0 4 20h16a1 1 0 0 0 .86-1.5l-8-14a1 1 0 0 0-.87-.51ZM12.01 16a1 1 0 1 1 0 2H12a1 1 0 1 1 0-2h.01ZM11 13V9a1 1 0 1 1 2 0v4a1 1 0 1 1-2 0Z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9L12 2.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3a1 1 0 0 1 1 1v15h15a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm15.7 4.3a1 1 0 0 1 0 1.4l-5 5a1 1 0 0 1-1.4 0L11 11.42l-3.3 3.3a1 1 0 0 1-1.4-1.42l4-4a1 1 0 0 1 1.4 0L14 11.58l4.3-4.3a1 1 0 0 1 1.4 0Z"/></symbol>
+</svg>
+
+<main id="stage" aria-live="off"></main>
+
+<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Check on tap</button>
+  <button class="proto-picker-item">Live, steadied</button>
+  <button class="proto-picker-item">Anchored %</button>
+  <button class="proto-picker-item">Auto-adjust</button>
+</nav>
+
+<aside class="proto-panel" aria-label="Prototype controls">
+  <div class="live"><span>Market price</span><output id="c-price" class="num">$200,00</output></div>
+  <label><span>Buffer x% <output id="o-x">1,00%</output></span><input type="range" id="c-x" min="0.25" max="3" step="0.25" value="1"></label>
+  <label><span>Price move per tick <output id="o-vol">$0,25</output></span><input type="range" id="c-vol" min="0.05" max="1" step="0.05" value="0.25"></label>
+  <label><span>Tick interval <output id="o-int">1000ms</output></span><input type="range" id="c-int" min="250" max="3000" step="250" value="1000"></label>
+  <label><span>Hold before flip (Live) <output id="o-hold">1500ms</output></span><input type="range" id="c-hold" min="0" max="4000" step="250" value="1500"></label>
+  <div class="row">
+    <button type="button" id="c-up">Price +1%</button>
+    <button type="button" id="c-down">Price −1%</button>
+    <button type="button" id="c-reset">Reset</button>
+    <button type="button" id="c-copy">Copy config</button>
+  </div>
+</aside>
+
+<script>
+// ---------- market + rules (shared by every variant) ----------
+const S = { base: 200, price: 200, x: 1, vol: 0.25, interval: 1000, hold: 1500 };
+const r2 = n => Math.round(n * 100) / 100;
+const money = n => '$' + n.toFixed(2).replace('.', ',');
+const num = n => n.toFixed(2).replace('.', ',');
+const parse = s => { const n = parseFloat(String(s).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? null : n; };
+const minTp = p => p * (1 + S.x / 100);
+const maxSl = p => p * (1 - S.x / 100);
+
+// Buy-side rule from the ticket: TP > x% above market, SL > x% below. In % mode, the distance itself must exceed x.
+function check(v, p) {
+  const e = { tp: null, sl: null };
+  if (v.mode === 'pct') {
+    if (v.tp !== null && v.tp <= S.x) e.tp = `TP harus lebih dari ${num(S.x)}% dari harga eksekusi`;
+    if (v.sl !== null && v.sl <= S.x) e.sl = `SL harus lebih dari ${num(S.x)}% dari harga eksekusi`;
+    return e;
+  }
+  if (v.tp !== null) e.tp = v.tp <= p ? `TP harus di atas harga pasar (${money(p)})` : v.tp <= minTp(p) ? `TP harus di atas ${money(minTp(p))}` : null;
+  if (v.sl !== null) e.sl = v.sl >= p ? `SL harus di bawah harga pasar (${money(p)})` : v.sl >= maxSl(p) ? `SL harus di bawah ${money(maxSl(p))}` : null;
+  return e;
+}
+const stateKey = e => e.tp || e.sl ? `${!!e.tp}|${!!e.sl}` : 'ok';
+const fmtLeg =(v, k) => v.mode === 'pct' ? (k === 'tp' ? '+' : '−') + num(v[k]) + '%' : money(v[k]);
+const estLeg = (v, k, p) => money(p * (1 + (k === 'tp' ? 1 : -1) * v[k] / 100));
+
+// ---------- variants ----------
+// tick:  what the screen does when the price moves (only text, unless a variant opts in)
+// buy:   what "Beli META" does with the current price
+const VARIANTS = [
+  { key: 'tap',    mode: 'price', liveSheet: false, buy: 'block' },
+  { key: 'live',   mode: 'price', liveSheet: true,  buy: 'block' },
+  { key: 'pct',    mode: 'pct',   liveSheet: false, buy: 'block' },
+  { key: 'adjust', mode: 'price', liveSheet: false, buy: 'adjust' },
+];
+
+let app = null;
+
+function phoneHTML() {
+  return `
+<div class="phone" id="phone">
+  <div class="screen" id="screen" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="statusbar"></div>
+    <div class="ptabs"><span>Spot</span><span>Futures</span><span class="on">Saham AS</span><span>Options</span></div>
+    <div class="head">
+      <div class="head-row"><span class="logo" aria-hidden="true">∞</span><span class="ticker">META <svg class="ico i20"><use href="#i-down"/></svg></span>
+        <span class="head-acts"><svg class="ico i20"><use href="#i-chart"/></svg><svg class="ico i20"><use href="#i-star"/></svg></span></div>
+      <div class="price-row"><span class="tag24">24h</span><span class="price num" data-price>$200,00</span><span class="chg num" id="chg">(+0,91%)</span><span class="lastclose">Last Close <span class="num">$198,20</span></span></div>
+      <div class="ratio"><i></i><i></i></div>
+      <div class="bidask num"><span>Bid <span id="bid">199,98</span> (Beli 22,95%)</span><span>Ask <span id="ask">200,09</span> (Jual 77,05%)</span></div>
+    </div>
+    <div class="body">
+      <div class="seg"><span class="on">Beli</span><span>Jual</span></div>
+      <div class="frow"><span>Tipe Order</span><span class="ctl ctl-center"><b>Market Order</b><svg class="ico i20"><use href="#i-down"/></svg></span></div>
+      <div class="frow"><span class="flabel">Total Beli (USD)<small>Ubah ke Qty</small></span><span class="ctl num"><svg class="ico i20"><use href="#i-minus"/></svg>$100,00<svg class="ico i20"><use href="#i-plus"/></svg></span></div>
+      <div class="slider"><i></i></div>
+      <div class="tpsl">
+        <div class="tpsl-row"><span class="dotted">Take Profit/Stop Loss</span><button class="link" type="button" id="open"><svg class="ico i16" aria-hidden="true"><use href="#i-edit"/></svg>Ubah</button></div>
+        <div class="vals num" id="vals"></div>
+        <div class="msg" id="msg" role="alert"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="kv"><span class="dotted">Buying Power</span><span class="num">$500,00</span></div>
+      <div class="kv"><b>Est Total + Fee</b><b class="num">$100,60</b></div>
+      <button class="btn" type="button" id="buy">Beli META</button>
+    </div>
+    <div class="bnav"><span>Spot</span><span>Futures</span><span>Trade</span><span class="on">Saham AS</span><span>Feed</span><span>Portfolio</span></div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="backdrop" id="backdrop"></div>
+  <form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" novalidate>
+    <div class="grabber"><i></i></div>
+    <div class="sheet-title"><button class="icon-btn" type="button" id="close" aria-label="Tutup"><svg class="ico"><use href="#i-x"/></svg></button><h2 id="sheet-title">Take Profit/Stop Loss</h2></div>
+    <div class="sheet-body">
+      <div class="calc"><span>Tipe Kalkulasi</span><span class="mini-seg"><button type="button" data-mode="price">Harga</button><button type="button" data-mode="pct">Pergerakan %</button></span></div>
+      ${['tp', 'sl'].map(k => `
+      <div class="leg" id="leg-${k}">
+        <label class="chk"><input type="checkbox" id="${k}-on" checked> ${k === 'tp' ? 'Take Profit' : 'Stop Loss'}</label>
+        <div class="leg-ctl">
+          <span class="ctl ctl-center"><b>Market</b><svg class="ico i20"><use href="#i-down"/></svg></span>
+          <span class="ctl stepper"><button type="button" data-step="${k}" data-dir="-1" aria-label="Kurangi ${k.toUpperCase()}"><svg class="ico i20"><use href="#i-minus"/></svg></button><input id="${k}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="${k === 'tp' ? 'Take Profit' : 'Stop Loss'}" aria-describedby="${k}-hint"><button type="button" data-step="${k}" data-dir="1" aria-label="Tambah ${k.toUpperCase()}"><svg class="ico i20"><use href="#i-plus"/></svg></button></span>
+        </div>
+        <div class="hint num" id="${k}-hint"><svg class="ico i14"><use href="#i-alert"/></svg><span></span></div>
+      </div>`).join('')}
+      <div class="note"><svg class="ico i14"><use href="#i-book"/></svg><span>TP/SL dihitung dari harga rata-rata eksekusi order ini. Jika harga eksekusi sudah melewati TP/SL, TP/SL akan ditolak dan perlu kamu ubah.</span></div>
+    </div>
+    <div class="sheet-dock"><button class="btn" type="submit">Aktifkan</button></div>
+  </form>
+</div>`;
+}
+
+function createApp(V) {
+  const $ = id => document.getElementById(id);
+  const applied = V.mode === 'pct' ? { mode: 'pct', tp: 1.25, sl: 2 } : { mode: 'price', tp: 202.5, sl: 196 };
+  let sheetMode = applied.mode, touched = { tp: false, sl: false }, lastFocus = null;
+  const steady = {};   // Live variant: a state only flips after it has held for S.hold ms
+  function settle(name, value, apply) {
+    const s = steady[name] ||= {};
+    if (!('shown' in s) || S.hold === 0) { s.shown = value; s.pend = null; apply(value); return; }
+    if (value === s.shown) { s.pend = null; return; }
+    if (!s.pend || s.pend.v !== value) s.pend = { v: value, t: performance.now() };
+    if (performance.now() - s.pend.t >= S.hold) { s.shown = value; s.pend = null; apply(value); }
+  }
+
+  function renderPrice() {
+    document.querySelectorAll('[data-price]').forEach(el => el.textContent = money(S.price));
+    const c = (S.price / 198.2 - 1) * 100;
+    $('chg').textContent = '(' + (c >= 0 ? '+' : '') + num(c) + '%)';
+    $('chg').toggleAttribute('data-down', c < 0);
+    $('bid').textContent = num(S.price - 0.02);
+    $('ask').textContent = num(S.price + 0.09);
+  }
+
+  let shownErrs;
+  function renderVals(errs) {
+    shownErrs = errs;
+    const v = $('vals');
+    const legs = ['tp', 'sl'].filter(k => applied[k] !== null);
+    // Figma 5589:161731: "Take Profit  Market ··· $208,28 (+5%)". Market entry has no fixed price, so the side that isn't set by the user is an estimate from the current price.
+    const legVal = k => {
+      if (applied.mode === 'pct') return `≈${estLeg(applied, k, S.price)} (${fmtLeg(applied, k)})`;
+      const d = (applied[k] / S.price - 1) * 100;
+      return `${money(applied[k])} (≈${d >= 0 ? '+' : '−'}${num(Math.abs(d))}%)`;
+    };
+    v.innerHTML = legs.map(k => `<div class="sum"${errs?.[k] ? ' data-err' : ''}><span><b>${k === 'tp' ? 'Take Profit' : 'Stop Loss'}</b>Market</span><span class="sum-v">${legVal(k)}</span></div>`).join('') || '<span>Belum aktif</span>';
+  }
+
+  function showError(errs, withFix) {
+    const which = errs.tp ? 'tp' : 'sl';
+    if (withFix) {
+      const target = which === 'tp' ? Math.ceil((minTp(S.price) + 0.01) * 10) / 10 : Math.floor((maxSl(S.price) - 0.01) * 10) / 10;
+      $('msg').innerHTML = `<div class="fix"><div class="fix-head"><svg class="ico i16"><use href="#i-alert"/></svg><div><b>Harga bergerak ke ${money(S.price)}</b>${which.toUpperCase()} ${money(applied[which])} sekarang terlalu dekat. ${errs[which]}.</div></div>
+        <div class="fix-acts"><button type="button" class="btn-s" id="fix-go">Ubah ke ${money(target)} &amp; beli</button><button type="button" class="link" id="fix-edit">Atur sendiri</button></div></div>`;
+      $('fix-go').onclick = () => { applied[which] = target; const e = check(applied, S.price); if (e.tp || e.sl) { showError(e, true); renderVals(e); } else { $('msg').innerHTML = ''; renderVals(); proceed(); } };
+      $('fix-edit').onclick = openSheet;
+      $('fix-go').focus();
+    } else {
+      $('msg').innerHTML = `<div class="msg-err"><svg class="ico i16"><use href="#i-alert"/></svg><span>${V.key === 'live' || applied.mode === 'pct' ? '' : `Harga bergerak ke ${money(S.price)}. `}${errs[which]}. <button type="button" class="link" data-open>Ubah TP/SL</button></span></div>`;
+      $('msg').querySelector('[data-open]').onclick = openSheet;
+    }
+  }
+
+  let toastTimer;
+  function proceed() {
+    const t = $('toast');
+    t.textContent = `Lanjut ke konfirmasi · estimasi ${money(S.price)}`;
+    t.setAttribute('data-show', '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.removeAttribute('data-show'), 2400);
+  }
+
+  // ----- sheet -----
+  function sheetVals() {
+    return { mode: sheetMode, tp: $('tp-on').checked ? parse($('tp').value) : null, sl: $('sl-on').checked ? parse($('sl').value) : null };
+  }
+  function hintFor(k) {
+    if (sheetMode === 'pct') { const v = parse($(k).value); return v === null ? '' : `≈${estLeg({ tp: v, sl: v }, k, S.price)} jika tereksekusi di ${money(S.price)}`; }
+    return k === 'tp' ? `Harus di atas ${money(minTp(S.price))}` : `Harus di bawah ${money(maxSl(S.price))}`;
+  }
+  function paintLeg(k, err) {
+    const leg = $('leg-' + k), on = $(k + '-on').checked;
+    leg.toggleAttribute('data-off', !on);
+    leg.toggleAttribute('data-err', on && !!err);
+    $(k).setAttribute('aria-invalid', String(on && !!err));
+    leg.querySelector('.hint span').textContent = (on && err) || hintFor(k);
+  }
+  // "Reward early, punish late": a leg only shows an error after blur or submit; once shown, it re-checks on input.
+  function validateSheet(force) {
+    const e = check(sheetVals(), S.price);
+    ['tp', 'sl'].forEach(k => { if (force) touched[k] = true; paintLeg(k, touched[k] ? e[k] : null); });
+    return e;
+  }
+  function setMode(m) {
+    sheetMode = m;
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  }
+  function openSheet() {
+    lastFocus = document.activeElement;
+    setMode(applied.mode);
+    $('tp-on').checked = applied.tp !== null; $('sl-on').checked = applied.sl !== null;
+    $('tp').value = num(applied.tp ?? (applied.mode === 'pct' ? 2.5 : 205));
+    $('sl').value = num(applied.sl ?? (applied.mode === 'pct' ? 2 : 196));
+    const e = check(applied, S.price);
+    touched = { tp: !!e.tp, sl: !!e.sl };
+    validateSheet(false);
+    $('phone').setAttribute('data-sheet', '');
+    $('screen').inert = true;
+    if (!('ontouchstart' in window)) setTimeout(() => $(e.sl && !e.tp ? 'sl' : 'tp').focus(), 0);
+  }
+  function closeSheet() {
+    $('phone').removeAttribute('data-sheet');
+    $('screen').inert = false;
+    (lastFocus && document.contains(lastFocus) ? lastFocus : $('open')).focus();
+  }
+
+  // ----- wiring -----
+  $('open').onclick = openSheet;
+  $('close').onclick = closeSheet;
+  $('backdrop').onclick = closeSheet;
+  $('sheet').addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+  $('sheet').onsubmit = e => {
+    e.preventDefault();
+    const err = validateSheet(true);
+    if (err.tp || err.sl) { $(err.tp ? 'tp' : 'sl').focus(); return; }
+    Object.assign(applied, sheetVals());
+    $('msg').innerHTML = '';
+    steady.row = { shown: stateKey(check(applied, S.price)) };
+    renderVals();
+    closeSheet();
+  };
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    if (b.dataset.mode === sheetMode) return;
+    setMode(b.dataset.mode);
+    $('tp').value = sheetMode === 'pct' ? '2,50' : num(Math.ceil(minTp(S.price) * 1.01));
+    $('sl').value = sheetMode === 'pct' ? '2,00' : num(Math.floor(maxSl(S.price) * 0.99));
+    touched = { tp: false, sl: false };
+    validateSheet(false);
+  });
+  document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
+    const k = b.dataset.step, step = sheetMode === 'pct' ? 0.25 : 0.1;
+    $(k).value = num(Math.max(0, r2((parse($(k).value) || 0) + step * Number(b.dataset.dir))));
+    touched[k] = true;
+    validateSheet(false);
+  });
+  ['tp', 'sl'].forEach(k => {
+    $(k).addEventListener('input', () => validateSheet(false));
+    $(k).addEventListener('blur', () => { touched[k] = true; validateSheet(false); });
+    $(k + '-on').addEventListener('change', () => validateSheet(false));
+  });
+
+  $('buy').onclick = () => {
+    const e = check(applied, S.price);
+    if (e.tp || e.sl) {
+      showError(e, V.buy === 'adjust');
+      renderVals(e);
+      if (V.key === 'live') steady.row = { shown: stateKey(e) };
+      return;
+    }
+    $('msg').innerHTML = '';
+    renderVals();
+    proceed();
+  };
+
+  renderPrice();
+  renderVals();
+  if (V.liveSheet) steady.row = { shown: stateKey(check(applied, S.price)) };
+
+  return {
+    tick() {
+      renderPrice();
+      renderVals(shownErrs);   // ≈ estimates are text-only; error marks stay as they were
+      const open = $('phone').hasAttribute('data-sheet');
+      if (V.liveSheet) {
+        // Live, steadied: the trade page reflects the rule continuously, but a state must hold before it shows.
+        // Settle on which legs are invalid, not on the message text (the text carries a price that changes every tick).
+        const e = check(applied, S.price);
+        settle('row', stateKey(e), key => {
+          if (key !== 'ok') showError(e, false); else $('msg').innerHTML = '';
+          renderVals(e);
+        });
+        if (open) {
+          const se = check(sheetVals(), S.price);
+          ['tp', 'sl'].forEach(k => {
+            settle('leg-' + k, se[k] ? 'bad' : 'ok', key => paintLeg(k, key === 'bad' ? se[k] : null));
+            const leg = $('leg-' + k);
+            leg.querySelector('.hint span').textContent = leg.hasAttribute('data-err') ? (se[k] || leg.querySelector('.hint span').textContent) : hintFor(k);
+          });
+        }
+      } else if (open && sheetMode === 'pct') {
+        ['tp', 'sl'].forEach(k => { if (!$('leg-' + k).hasAttribute('data-err')) $('leg-' + k).querySelector('.hint span').textContent = hintFor(k); });
+      }
+    },
+  };
+}
+
+// ---------- market engine ----------
+let timer;
+function tick() {
+  const drift = (S.base - S.price) * 0.15;
+  S.price = r2(Math.min(S.base + 4 * S.vol, Math.max(S.base - 4 * S.vol, S.price + drift + (Math.random() - 0.5) * 2 * S.vol)));
+  document.getElementById('c-price').textContent = money(S.price);
+  app?.tick();
+}
+function restartTimer() { clearInterval(timer); timer = setInterval(tick, S.interval); }
+document.addEventListener('visibilitychange', () => document.hidden ? clearInterval(timer) : restartTimer());
+
+// ---------- control panel ----------
+const panelFmt = { x: v => num(v) + '%', vol: v => money(v), int: v => v + 'ms', hold: v => v + 'ms' };
+[['x', 'x'], ['vol', 'vol'], ['int', 'interval'], ['hold', 'hold']].forEach(([id, key]) => {
+  const input = document.getElementById('c-' + id);
+  const out = document.getElementById('o-' + id);
+  input.addEventListener('input', () => {
+    S[key] = Number(input.value);
+    out.textContent = panelFmt[id](S[key]);
+    if (key === 'interval') restartTimer();
+    app?.tick();
+  });
+});
+const jump = f => { S.base = r2(S.price * f); S.price = S.base; document.getElementById('c-price').textContent = money(S.price); app?.tick(); };
+document.getElementById('c-up').onclick = () => jump(1.01);
+document.getElementById('c-down').onclick = () => jump(0.99);
+document.getElementById('c-reset').onclick = () => { S.price = 200; jump(1); };
+document.getElementById('c-copy').onclick = async e => {
+  const text = `buffer x: ${num(S.x)}% · price move/tick: ${money(S.vol)} · tick: ${S.interval}ms · hold before flip: ${S.hold}ms`;
+  try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied'; } catch { e.target.textContent = 'Copy failed'; }
+  setTimeout(() => e.target.textContent = 'Copy config', 1500);
+};
+
+// ---------- picker (PICKER.md reference wiring) ----------
+const variants = VARIANTS.map(() => phoneHTML);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function mount(i) {
+  stage.innerHTML = '';
+  app = null;
+  requestAnimationFrame(() => { stage.innerHTML = variants[i](); app = createApp(VARIANTS[i]); });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= variants.length) setActive(n - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+restartTimer();
+</script>
+</body>
+</html>
