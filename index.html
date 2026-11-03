@@ -167,7 +167,7 @@
   .proto-picker[data-position="top"] { bottom: auto; top: 24px; }
 
   /* Harness chrome: control panel (CONTROLS.md) */
-  .proto-panel { position: fixed; top: 24px; right: 24px; z-index: 2147483646; width: 248px; padding: 12px; border-radius: 12px; background: rgba(10,10,10,.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 8px 24px rgba(0,0,0,.24); }
+  .proto-panel { padding: 12px; border-radius: 12px; background: rgba(10,10,10,.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 8px 24px rgba(0,0,0,.24); }
   .proto-panel label { display: flex; flex-direction: column; gap: 4px; color: rgba(255,255,255,.7); }
   .proto-panel label span { display: flex; justify-content: space-between; }
   .proto-panel output { color: #fff; font-variant-numeric: tabular-nums; }
@@ -176,7 +176,17 @@
   .proto-panel button { border: 0; border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.12); color: #fff; font: inherit; }
   .proto-panel button:active { transform: scale(0.97); }
   .proto-panel .live { display: flex; justify-content: space-between; color: rgba(255,255,255,.7); }
-  @media (max-width: 960px) { .proto-panel { top: auto; bottom: 72px; right: 12px; width: 220px; } }
+  /* Gear: picker + panel live in one popover, closed by default */
+  .proto-gear { position: fixed; top: 16px; right: 16px; z-index: 2147483647; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 999px; background: rgba(10,10,10,.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: rgba(255,255,255,.85); box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 8px 24px rgba(0,0,0,.24); cursor: pointer; touch-action: manipulation; transition: color 150ms ease-out; }
+  .proto-gear svg { width: 20px; height: 20px; fill: currentColor; transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .proto-gear[aria-expanded="true"] { color: #fff; }
+  .proto-gear[aria-expanded="true"] svg { transform: rotate(60deg); }
+  .proto-gear:active { transform: scale(0.97); }
+  .proto-gear:focus-visible { outline: 2px solid rgba(255,255,255,.4); outline-offset: 2px; }
+  .proto-tools { position: fixed; top: 68px; right: 16px; z-index: 2147483646; display: flex; flex-direction: column; align-items: stretch; gap: 8px; max-width: calc(100vw - 32px); }
+  .proto-tools[hidden] { display: none; }
+  .proto-tools .proto-picker { position: relative; top: auto; bottom: auto; left: auto; transform: none; overflow-x: auto; scrollbar-width: none; }
+  @media (prefers-reduced-motion: reduce) { .proto-gear svg { transition: none; } }
 </style>
 </head>
 <body>
@@ -195,7 +205,9 @@
 
 <main id="stage" aria-live="off"></main>
 
-<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+<button type="button" class="proto-gear" id="proto-gear" aria-label="Prototype settings" aria-expanded="false" aria-controls="proto-tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.9831 11.9999C17.9831 11.4635 18.1127 10.9348 18.3601 10.4589C18.6075 9.98298 18.966 9.57358 19.405 9.2655C19.6712 9.07184 19.8569 8.78668 19.9265 8.46472C19.9967 8.13959 19.9434 7.79966 19.7771 7.5116C19.6107 7.22363 19.3427 7.00783 19.0261 6.90613C18.7092 6.8045 18.3652 6.82423 18.0622 6.96179C17.5784 7.18542 17.048 7.28972 16.5154 7.26648C15.9794 7.24305 15.4566 7.09119 14.9919 6.82312C14.5273 6.55503 14.134 6.17865 13.8454 5.72644C13.5569 5.27418 13.381 4.75884 13.3337 4.22449V4.22351C13.3007 3.8943 13.147 3.58882 12.9021 3.36609C12.6555 3.1418 12.3341 3.0175 12.0007 3.01746C11.6674 3.01746 11.346 3.14187 11.0994 3.36609C10.8528 3.59036 10.6984 3.89853 10.6667 4.23035C10.6636 4.2637 10.6584 4.29677 10.6521 4.32898C10.5923 4.82579 10.4236 5.30381 10.154 5.72644C9.86549 6.17871 9.47223 6.555 9.00756 6.82312C8.54283 7.09126 8.02013 7.24303 7.48412 7.26648C6.94807 7.28991 6.41386 7.18446 5.92748 6.95789V6.95691C5.62718 6.82414 5.28817 6.80655 4.97533 6.9071C4.6589 7.00885 4.39163 7.2248 4.22533 7.51257C4.05904 7.80052 4.00585 8.14065 4.07591 8.4657C4.14605 8.79054 4.33424 9.07758 4.60423 9.27136H4.60326C5.03868 9.5788 5.39443 9.98586 5.64037 10.4589C5.88778 10.9347 6.01732 11.4635 6.01732 11.9999C6.01726 12.536 5.88765 13.0642 5.64037 13.5399C5.39434 14.0131 5.03794 14.4199 4.60228 14.7274L4.60326 14.7284C4.33301 14.9221 4.14425 15.2091 4.07396 15.5341C4.00373 15.8593 4.05691 16.2 4.22338 16.4882C4.38985 16.7761 4.65762 16.992 4.97435 17.0936C5.29103 17.1952 5.63437 17.1753 5.93724 17.038C6.42134 16.8139 6.95206 16.7092 7.48509 16.7323C8.02121 16.7556 8.54368 16.9076 9.00853 17.1757C9.47343 17.4438 9.86734 17.8199 10.156 18.2723C10.4434 18.7229 10.6177 19.2362 10.6658 19.7684H10.6667C10.6983 20.1004 10.8527 20.4084 11.0994 20.6327C11.346 20.857 11.6673 20.9813 12.0007 20.9813C12.3341 20.9813 12.6555 20.857 12.9021 20.6327C13.1487 20.4084 13.3032 20.1003 13.3347 19.7684C13.3828 19.2363 13.5581 18.7238 13.8454 18.2733C14.134 17.821 14.5272 17.4448 14.9919 17.1766C15.4567 16.9085 15.9793 16.7557 16.5154 16.7323C17.0481 16.7091 17.5783 16.8143 18.0622 17.038L18.1775 17.0839C18.4506 17.1785 18.7488 17.1826 19.0261 17.0936C19.3428 16.992 19.6107 16.7761 19.7771 16.4882C19.9436 16.2 19.9967 15.8593 19.9265 15.5341C19.8562 15.2092 19.6673 14.9221 19.3972 14.7284V14.7274C18.9617 14.42 18.606 14.013 18.3601 13.5399C18.1128 13.0642 17.9832 12.5361 17.9831 11.9999ZM13.9997 11.9999C13.9997 10.8954 13.1043 9.99988 11.9997 9.99988C10.8954 10 9.99982 10.8955 9.99974 11.9999C9.99974 13.1043 10.8953 13.9997 11.9997 13.9999C13.1043 13.9999 13.9997 13.1044 13.9997 11.9999ZM15.9997 11.9999C15.9997 14.209 14.2089 15.9999 11.9997 15.9999C9.79074 15.9997 7.99974 14.2089 7.99974 11.9999C7.99982 9.79091 9.79079 8.00004 11.9997 7.99988C14.2088 7.99988 15.9997 9.79081 15.9997 11.9999ZM19.9831 11.9999C19.9832 12.215 20.0353 12.4272 20.1345 12.618C20.2089 12.761 20.3083 12.8888 20.4275 12.996L20.5535 13.0966L20.5613 13.1024C21.2355 13.5854 21.7065 14.3015 21.8816 15.1122C22.0566 15.9229 21.9234 16.77 21.5085 17.4882C21.0936 18.2063 20.4263 18.7446 19.6365 18.9979C18.8468 19.2512 17.9912 19.2011 17.2361 18.8583L17.2263 18.8544C17.0313 18.7636 16.8172 18.721 16.6023 18.7303C16.3873 18.7398 16.1774 18.8005 15.991 18.9081C15.8045 19.0157 15.6468 19.167 15.531 19.3485C15.4153 19.53 15.3449 19.7367 15.3259 19.951V19.9579C15.2472 20.7851 14.8625 21.5531 14.2478 22.1122C13.633 22.6713 12.8318 22.9813 12.0007 22.9813C11.1696 22.9813 10.3685 22.6714 9.75365 22.1122C9.13885 21.553 8.75422 20.7852 8.67552 19.9579L8.67455 19.951C8.65562 19.7366 8.58523 19.53 8.46947 19.3485C8.35366 19.167 8.19604 19.0157 8.00951 18.9081C7.82299 18.8005 7.6133 18.7397 7.39818 18.7303C7.18318 18.721 6.96921 18.7635 6.77416 18.8544L6.76439 18.8583C6.00928 19.2011 5.15369 19.2511 4.364 18.9979C3.57425 18.7446 2.90685 18.2063 2.49193 17.4882C2.07701 16.77 1.94383 15.9229 2.11888 15.1122C2.29397 14.3015 2.76497 13.5854 3.4392 13.1024L3.44701 13.0966C3.62301 12.973 3.76672 12.8088 3.86595 12.618C3.96517 12.4272 4.01726 12.215 4.01732 11.9999C4.01732 11.7848 3.96513 11.5726 3.86595 11.3817C3.76669 11.1908 3.62315 11.0258 3.44701 10.9022L3.43822 10.8964C2.76489 10.4131 2.29547 9.69678 2.12084 8.8866C1.94621 8.07642 2.07845 7.23027 2.49291 6.51257C2.90737 5.79486 3.57402 5.2565 4.36302 5.00281C5.05321 4.78092 5.7942 4.7907 6.47435 5.02527L6.76244 5.13953L6.7722 5.14441C6.96721 5.23525 7.18131 5.27776 7.39623 5.26843C7.61119 5.25904 7.82117 5.19818 8.00756 5.0907C8.19401 4.98312 8.35174 4.83175 8.46752 4.65027C8.58327 4.4688 8.65363 4.26214 8.67259 4.04773C8.67628 4.00618 8.68264 3.96544 8.69115 3.92566C8.79329 3.1427 9.16764 2.41954 9.75365 1.8866C10.3685 1.32748 11.1697 1.01746 12.0007 1.01746C12.8318 1.0175 13.633 1.32745 14.2478 1.8866C14.7858 2.37589 15.1473 3.02526 15.282 3.73425L15.3259 4.04187V4.04773C15.3449 4.26204 15.4153 4.46886 15.531 4.65027C15.6467 4.8317 15.8046 4.98312 15.991 5.0907C16.1774 5.19826 16.3873 5.25901 16.6023 5.26843C16.8172 5.27783 17.0313 5.2352 17.2263 5.14441L17.2361 5.1405C17.9912 4.79778 18.8468 4.74763 19.6365 5.00085C20.4262 5.25414 21.0936 5.79252 21.5085 6.51062C21.9234 7.22875 22.0566 8.07591 21.8816 8.8866C21.7065 9.69733 21.2355 10.4143 20.5613 10.8973L20.5535 10.9022C20.3773 11.0258 20.2338 11.1908 20.1345 11.3817C20.0353 11.5726 19.9831 11.7847 19.9831 11.9999Z"/></svg></button>
+<div class="proto-tools" id="proto-tools" hidden>
+<nav class="proto-picker" aria-label="Prototype variants">
   <span class="proto-picker-highlight" aria-hidden="true"></span>
   <button class="proto-picker-item" data-active aria-current="true">Check on tap</button>
   <button class="proto-picker-item">Live, steadied</button>
@@ -216,6 +228,7 @@
     <button type="button" id="c-copy">Copy config</button>
   </div>
 </aside>
+</div>
 
 <script>
 // ---------- market + rules (shared by every variant) ----------
@@ -565,6 +578,18 @@ function setActive(i) {
 items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
 replay?.addEventListener('click', () => mount(current));
 window.addEventListener('resize', moveHighlight);
+
+// Gear toggles the picker + panel; keys 1–4 / ←→ still switch variants while it's closed.
+const gear = document.getElementById('proto-gear');
+const tools = document.getElementById('proto-tools');
+function setTools(open) {
+  tools.hidden = !open;
+  gear.setAttribute('aria-expanded', String(open));
+  if (open) moveHighlight();   // highlight can't measure while hidden
+}
+gear.addEventListener('click', () => setTools(tools.hidden));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !tools.hidden) { setTools(false); gear.focus(); } });
+document.addEventListener('pointerdown', e => { if (!tools.hidden && !tools.contains(e.target) && !gear.contains(e.target)) setTools(false); });
 
 document.addEventListener('keydown', (e) => {
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
